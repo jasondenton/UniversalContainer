@@ -1,0 +1,8 @@
+*.o
+*.a
+*.so
+*.hh
+*.gcno
+contract_lexer.cpp
+contract_parser.tab.*
+ucoder_json.cpp

@@ -1,0 +1,31 @@
+car ==> {
+	"model" : string
+	"plate" : string("\w\w\w\d\d\d\d")
+	"year" : integer(1900:)
+	"milage" : real(0.0:250000.0)
+	"used" : boolean
+	"smogcode" : character
+}
+
+boat ==> {
+	"length" : real(5.0:)
+	"displacement" : real
+	"plate" : string("WV \d\d\d\d\d")
+}
+
+owner ==> {
+	"name" : string("[A-Z][a-z]* [A-Z][a-z]*")
+	"age" : integer(16:75)
+}
+
+dmvrecord ==> {
+	"vehicle" : #group
+		car
+		boat
+	#endgroup
+	"owners" : [
+		#type : owner
+		#size : integer(1:)
+	]
+}
+

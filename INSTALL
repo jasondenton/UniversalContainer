@@ -1,0 +1,18 @@
+Configuration of UniversalContainer is handled with a few lines
+at the top of the makefile. These control building CURL, MYSQL,
+and SQLite support, all of which require the appropriate libraries
+be installed and available at compile time. You can also set the
+install location there. Then just 
+
+make; sudo make install
+
+UniversalContainer depends on both Flex and Bison for its JSON parsing
+and contract checking capabilities. Unforatuntely, the versions that
+come with MacOS are quite dated, and are insufficent for building
+UniversalContainer.
+
+Flex in particular has a long dependency chain, and so it is recommened
+that if you need to install it on a mac you use homebrew. You can set
+the needed binary locations at the top of the provided Makefile.
+
+UniversalContainer was last test with Flex 2.6.4 and Bison 3.4.1.

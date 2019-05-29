@@ -1,0 +1,303 @@
+<!doctype html>
+<!--
+  UniversalContainer library.
+  Copyright Jason Denton, 2008,2010,2012, 2015.
+  Made available under the new BSD license.
+ 
+  Send comments and bug reports to jason.denton@gmail.com
+  http://www.greatpanic.com/code.html
+-->
+
+<html>
+<head>
+<title>class UCSchema</title>
+<link media="screen" rel="stylesheet" type="text/css" href="proglib.css"/>
+</head>
+<body><div class="main">
+<h1>class UCSchema</h1>
+<h2 class="include">#include "ucschema.h"</h2>
+
+<h2>Overview</h2>
+
+<p>The static methods within the UCSchema class provides a means to evaluate a
+  given UniversalContainer and determine if it meets a pre-defined set of criteria. 
+  These criteria specify the type of the data held by the container and the possible
+  values it may take on. Two key ideas are helpful in understanding these functions.
+  The first is the notion of a contract, which defines the constraints which a particular
+  UniversalContainer must satisfy. The second is the notion of a schema, which is a contract
+  which has been bound to an identifying name and stored within the global library. To use
+  the UCSchema functions, you define a set of schema using a simple language, and then
+  add them to this global library. You may then check UniversalContainers against these
+  schema by name.</p>
+
+<h2>An Example Schema</h2>
+<pre><div class="code_example">car ==> {
+   "model" : string
+   "plate" : string("\w\w\w\d\d\d\d")
+   "year" : integer(1900:)
+   "milage" : real(0.0:250000.0)
+   "used" : boolean
+   "smogcode" : character
+}
+
+boat ==> {
+   "length" : real(5.0:),
+   "displacement" : real,
+   "plate" : string("WV \d\d\d\d\d")
+}
+
+owner ==> {
+   "name" : string("[A-Z][a-z]* [A-Z][a-z]*")
+   "age" : integer(16:75)
+}
+
+dmvrecord ==> {
+   "vehicle" : #group
+      car
+      boat
+   #endgroup
+   "owners" : [
+      #type : owner
+      #size : integer(1:)
+   ]
+}
+</div></pre>
+
+<h2>Describing a Schema</h2>
+<p>A schema is described in a block of formated plain text, which is then sent to one of the
+<tt>add_contract_to_library</tt> methods to add the schema described to the global library. 
+A schema always has the form:
+
+<pre><div class="code_example">schemaname ==> contract</div></pre>
+
+where <tt>schemaname</tt> is an identifier and contract is a valid contract. Valid identifiers
+are formed by an alphabetic character followed by one or more alpha-numeric characters.
+Contracts are a combination of type information and constraints that must be meet by a 
+UniversalContainer. A contract can specify scalars, dictionaries, or arrays. Contracts may 
+also describe a group of possible contracts, satisfying any one of which will cause the contract
+to be satisfied. Additional, each contract may have an optional tag, identifying data which 
+must match a provided symbol table.</p>
+
+<h3>Schema Contracts</h3>
+  <p>When a valid schema identifier appears in place of a contract, it is interpreted as the
+  contract to mean the contract associated with the schema at the time when the contract is checked.
+  This allows schemas to be referenced from within other schemas or contracts. When the contract parser
+  encounters such an identifier it is not checked, instead a contract is created with a reference to the
+  identifier. Only when that contract is later checked against a UniversalContainer is the global library
+  checked for a matching contract. Consequently, schema names do not have to a be forward declared.</p>
+
+<h3>Scalar Contracts</h3>
+<p>A scalar contract describes a contract on a scalar data type or a string. 
+  These contracts consist of a keyword that declares the type, and an optional
+  restriction on the possible values that the data may take on specified in 
+  parentheses.</p>
+
+<p><table class="dictionary">
+  <tr>
+    <th>Contract</th><th>Notes</th>
+  </tr>
+  <tr>
+    <td><tt>integer(MIN:MAX)</tt></td>
+    <td>The <tt>integer</tt> keyword specifies that the data under consideration
+      must be of type Integer. If parentheses are present, then one or both of
+      MIN and MAX must be specified. If only one value is specified it is interpreted
+      as the minimum value for the data, unless it is preceded by a colon (:),
+      in which case it is interpreted as a maximum value for the data.
+    </td>
+  </tr>
+  <tr>
+    <td><tt>real(MIN:MAX)</tt></td>
+    <td>The <tt>real</tt> keyword specifies that the data under consideration
+      must be of type Real. If parentheses are present,
+      then one or both of MIN and MAX must be specified. If only one value is specified it
+      is interpreted as the minimum value for the data, unless it is preceded by a
+      colon (:), in which case it is interpreted as a maximum value for the data.
+    </td>
+  </tr>
+  <tr>
+    <td><tt>character(MIN:MAX)</tt></td>
+    <td>The <tt>character</tt> keyword specifies that the data under consideration
+      must be of type Integer. If parentheses are present, then one or both of
+      MIN and MAX must be specified. If only one value is specified it is interpreted
+      as the minimum value for the data, unless it is preceded by a colon (:),
+      in which case it is interpreted as a maximum value for the data. For a character,
+      valid minimum and maximum values are un-escaped characters.
+    </td>
+  </tr>
+  <tr>
+    <td><tt>boolean(true | false)</tt></td>
+    <td>The <tt>boolean</tt> keyword specifies that the data under consideration must be of
+      type boolean. If parentheses are present, then the literal "true" or "false" must also
+      appear to constrain the value to one of those two values. This feature is intended to be
+      used with group contracts (explained below), which allow for a schema to be satisfied if a particular data item conforms to one of several different sub-schema.</td>
+    </tr>
+  <tr>
+    <td><tt>string(regex)</tt></td>
+    <td>The <tt>string</tt> keyword specifies that the data under consideration
+      must be of a string. If parentheses are present, then they must contain a regular
+      expression which the string must match in order to satisfy the contract. The
+      underlying regex checking is done using the system regex routines described in regex.h,
+      see <tt>man regex</tt> and <tt>re_format</tt> for a description of the dialect.
+    </td>
+  </tr>
+</table></p>
+
+<h3>Map Contracts</h3>
+
+<p>A map schema contract specifies constraints on a map. Fields where the key value is separated
+  from the contract by a colon are required and must appear in order for the contract to be
+  satisfied. Fields where the key value is separated by the contract by a question mark are optional. 
+  They do not have to appear, but if they do they must satisfy the contract. The order in which
+  fields appear does not matter. Key values are double quoted strings.
+
+A map schema takes the form :
+
+<pre><div class="code_example">{
+  "required_key" : contract,
+  "optional_key" ? contact
+  ...
+}
+</div></pre>
+
+<h3>Array Contracts</h3>
+
+<p>Array contracts allow for a variety of constraints to be placed on an array and its contents,
+  expressed as a series of sub-contracts. The <tt>#type</tt> contract specifies a contract
+  that all elements must satisfy. The <tt>#exists</tt> contract specifies a contract that must be
+  satisfied by at least one element of the array. The <tt>#size</tt> contract must be an integer contract,
+  and it is applied to the number of elements in the array, rather than the contents. It also possible
+  to place constraints on particular elements of an array. Instead of one of the preceding keywords,
+  a contract may be associated with an integer. The contract is then applied to that 
+  zero-indexed position in the array.</p>
+
+<p>An array contract takes the form :
+
+<pre><div class="code_example">[
+   #type: contract,
+   #size: integer contract,
+   #exists: contract
+   integer : contract
+]
+</div></pre>
+</p>
+
+
+<h3>Group Contracts</h3>
+
+<p>Group contracts provide a mechanism for dealing with UniversalContainers that 
+  might be satisfied by one of several possible sub-contracts. It can be used 
+  to specify a constrained set of types that will satisfy the constraints. Alternatively,
+  if there are interdependencies between data values in a satisfying object, group contracts
+  can be used to specify the possible variations.</p>
+
+Group contracts take the form :
+
+<pre><div class="code_example">#group
+   contract 
+   contract 
+   ...
+#endgroup 
+</div></pre>
+
+
+<h3>Tagged Contracts</h3>
+
+<p>Any valid contract may be tagged, by prefixing it with a name enclosed in angle brackets. 
+  If the name of the tag is not found in the symbol table, the value of the satisfying object
+  is cloned into a symbol table. If the given name is found in the symbol table, the contract
+  is instead checked for equality with UniversalContainer which previously satisfied that tag.
+  By using the versions of the compare and compare_and_throw that allow for a symbol table to
+  passed in, it is possible to preload the symbol table with the desired values, or to preserve
+  the values across multiple calls to the compare routines. When using the compare routines
+  without a symbol table an internal symbol table is still maintained, filled, and checked
+  for the duration of the call.</p>
+
+
+<h2>UCSchema Static Methods</h2>
+
+<div class="method_div">
+<h3 class="method">static void UCSchema::add_contract_to_library(Buffer* buf)</h3>
+<h3 class="method">static void UCSchema::add_contract_to_library(char* str)</h3>
+<p>These functions take a block of plain text that describes one or more schema and parses it,
+adding the results to the global library.</p>
+</div>
+
+<div class="method_div">
+<h3 class="method">static unsigned compare(std::string const&amp; contract, const UniversalContainer&amp; uc)</h3>
+<h3 class="method">static unsigned compare(std::string const&amp; contract, const UniversalContainer&amp; uc, UniversalContainer&amp; symbol_table)</h3>
+  <p>Compares the container uc against the named contract, and returns 0 if
+  uc matches the contract. A non-zero return value indicates one or
+  more violations of the contract; depending on which bits of the
+  return code are set. Note that in the case of arrays and maps, there
+  is no indication of which element caused a particular flag to be
+  set, and there may be multiple violations of the same type. The following
+  table details the various masks which can be ANDed with the return code
+  to determine which errors occurred.</p>
+
+  <p>If <tt>symbol_table</tt> is provided, it must be a map or null. If any values of the map are
+    set any tagged contracts within the schema are checked against those values. Other tagged values
+    are inserted into the symbol_table, which is turned into a map if it comes in as null.</p>
+
+  <p><table class="dictionary">
+    <tr>
+      <td>ucc_NO_SUCH_TYPE</td>
+      <td>No type with the name given by <tt>contract</tt> has been registered with the library.
+    </tr>
+    <tr>
+      <td>ucc_IMPROPER_TYPE</td>
+      <td>The container or one or more of its elements has the wrong data type.</td>
+    </tr>
+    <tr>
+      <td>ucc_CONSTRAINT_VIOLATION</td>
+      <td>The value of the container violates the constraints specified in the contract. 
+        This is also the flag that signals an array that has violated its size 
+        constraints, or for which some element has violated that exists constraint.
+      </td>
+    </tr>
+    <tr>
+      <td>ucc_EXTRA_MAP_ELEMENT</td>
+      <td>A map contains one or more elements that are not specified in as required or optional.</td>
+    </tr>
+    <tr>
+      <td>ucc_MISSING_REQUIRED_MAP_ELEMENT</td>
+      <td>A map is missing an element that is marked as required.</td>
+    </tr>
+    <tr>
+      <td>ucc_MISSING_REQUIRED_ARRAY_ELEMENT</td>
+      <td>An array does not contain an element that is specified in
+    the exists constraint.</td>
+    </tr>
+    <tr>
+      <td>ucc_STRING_DOES_NOT_MATCH</td>
+      <td>Some string does not match the given regex expression.</td>
+    </tr>
+  </table></p>
+</div>
+
+<div class="method_div">
+<h3 class="method">static void compare_and_throw(std::string const&amp; contract, 
+                                                 const UniversalContainer&amp; uc, 
+                                                 unsigned conditions = 0XFFFFFFFF)</h3>
+<h3 class="method">static void compare_and_throw(std::string const&amp; contract, 
+                            const UniversalContainer&amp; uc, 
+                            UniversalContainer&amp; symbol_table, 
+                            unsigned conditions = 0XFFFFFFFF)</h3>
+
+    <p>These functions operate similar to the corresponding compare functions, but instead of
+      returning a value they will throw an exception. This exception will be a UniversalContainer with a map type, similar to other exceptions thrown by the library. Two additional keys will be present.
+      The key <tt>compare_results</tt> contains the value that would have been returned 
+      by compare. The key <tt>violations</tt> contains an array of strings explaining the various
+      errors.</p>
+
+      <p>The conditions field is ORed with the results of the compare. If the results are non-zero
+        the exception is thrown. This can be used to allow some conditions, such as the presence
+        of extra map elements, to not throw an exception.</p>
+</div>
+
+<h2>Public, non-static methods of UCContract</h2>
+<p>UCContract contains a number of public, non-static methods. These methods are not documented 
+  or supported, but are unlikely to undergo much further evolution. If a new way to specify 
+  schema is required, such as with JSONSchema, these methods would be a good place to start.</p>
+
+</div></body>
+</html>

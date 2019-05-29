@@ -1,0 +1,17 @@
+{
+	"vehicle" : {
+		"model" : "Ford",
+		"plate" : "FDX1234",
+		"year" : 2012,
+		"milage" : 50123.34,
+		"used" : true,
+		"smogcode" : "D"
+	},
+	"owners" : [{
+		"name" : "John Alright",
+		"age" : 27
+	}, {
+		"name" : "Suzy Good",
+		"age" : 45
+	}]
+}

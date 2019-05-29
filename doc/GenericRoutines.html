@@ -1,0 +1,167 @@
+<!doctype html>
+<!--
+  UniversalContainer library.
+  Copyright Jason Denton, 2008,2010, 2016.
+  Made available under the new BSD license.
+ 
+  Send comments and bug reports to jason.denton@gmail.com
+  http://www.greatpanic.com/code.html
+-->
+<html>
+<head>
+<title>Libuc generic utility routines</title>
+<link media="screen" rel="stylesheet" type="text/css" href="proglib.css"/>
+</head>
+<body><div class="main">
+<h1>LibUC</h1>
+
+<h2>Overview</h2>
+<p>The uc library provides a number of generic utility routines useful in C++ programs.</p>
+
+<h2>Template Functions</h2>
+<h2 class="include">#include "stl_util.h"</h2>
+
+<div class="method_div">
+<h3 class="method">std::vector keys_for_map(const std&amp; map)</h3>
+<p>This function template returns a vector containing all the keys for the given map.</p>
+</div>
+
+<div class="method_div">
+<h3 class="method">std::vector values_in_map(const std&amp; map)</h3>
+<p>This function template returns a vector containing all the values stored in a map.</p>
+</div>
+
+<div class="method_div">
+<h3 class="method">std::vector vector_sublist(const std::vector&amp; list, int start, int length)</h3>
+<p>This template function returns a sublist of the given vector, starting at the given index and running for length elements.</p>
+</div>
+
+<div class="method_div">
+<h3 class="method">bool compare_map(std::map&amp; map1, std::map&amp; map2)</h3>
+  <p>Compares two maps, and returns true if the value associated with every key in the first map appears in the second map and the value associated with that key is the same (operator==) in both maps.</p>
+</div>
+
+<div class="method_div">
+<h3 class="method">bool compare_vector(std::vector&amp; list1, std::vector&amp; list2)</h3>
+  <p>Compares two vectors, and return true if the contain identical elements in identical order.</p>
+</div>
+
+<h2>String Functions</h2>
+<h2 class="include">#include "string_util.h"</h2>
+
+<div class="method_div">
+<h3 class="method">std::string string_chomp(const std::string& str)</h3>
+
+  <p>Returns a new string, which is identical to the provided string
+  except that whitespace (spaces, tabs, and newlines) are removed from
+  both the front and end of the string.</p>
+  
+</div>
+
+<div class="method_div">
+<h3 class="method">std::vector&lt;std::string&gt; string_pieces(const std::string& str,const std::string& delim)</h3>
+
+  <p>Breaks the string str into tokens and returns the results. The
+  delim parameter is interpreted as a string, so that all characters
+  must be present and in order before a delimiter is considered to
+  have been found.</p>
+  
+</div>
+
+<div class="method_div">
+<h3 class="method">std::vector&lt;std::string&gt; string_tokens(const std::string&amp; str,const std::string&amp; delim)</h3>
+
+  <p>Breaks the string str into tokens and returns the results. The
+  delim parameter is interpreted as a series of single character
+  delimiters.</p>
+  
+</div>
+
+<div class="method_div">
+<h3 class="method">std::vector&lt;std::string&gt; string_split(const std::string&amp; str,const std::string&amp; delim)</h3>
+
+  <p>Breaks the string str into two parts and returns the results. The delim parameter is interpreted as a series of single character delimiters.</p>
+</div>
+
+<h2>Command Line Options Parser</h2>
+<h2 class="include">#include "ucontainer.h"</h2>
+
+<div class="method_div">
+<h3 class="method">UniversalContainer parse_command_line(int argc, char** argv,  
+  const CmdLineOption* options, const char* text)</h3>
+
+<p>The <tt>parse_command_line</tt> function provides a sophisticated mechanism for dealing with
+  command line options, leveraging the ability of UniversalContainer maps to associated keys 
+  with arbitrary data types. Where possible, it also automates tasks such as reading files,
+  parsing input, taking the requested action before returning the results associated with
+  the relevant key. If a problem is encountered handling the options, the program will display
+  a help message built from the provided descriptions of the arguments and then exit. If no
+  problem is encountered, the return UniversalContainer maps keys derived from the long argument
+  values to the values passed for those arguments.
+
+<p>The options parameter specifies what the command line arguments the parser understands and
+  how it interprets them. It is expected that this will be a statically defined array, but this
+  is not required.</p>
+
+  <pre><div class="code_example">struct CmdLineOption {
+        const char* lng;
+        char shrt;
+        const char* desc;
+        const char* def;
+        UniversalContainerType ptype;
+  };</div></pre>
+
+<p><table class="dictionary">
+  <tr><th>Field</th><th>Meaning</th></tr>
+  <tr><td class="symbol">lng</td><td class="notes">The long version of the option.</td></tr>
+  <tr><td class="symbol">shrt</td><td class="notes">The one character version of the option.</td></tr>
+  <tr><td class="symbol">desc</td><td class="notes">A description of the argument, 
+  used to print the help message.</td></tr>
+  <tr><td class="symbol">def</td><td class="notes">A default value for the argument.</td></tr>
+  <tr><td  class="symbol">ptype</td><td class="notes">One of uc_Boolean, uc_Integer,
+   uc_Character, uc_String, uc_WString, uc_Real, uc_FileInName, uc_Buffer, uc_JSON, 
+   uc_FileOutName</td></tr>
+</table></p>
+
+<p>Each command line argument is evaluated to determine if it is a short
+option, specified as a single character preceded by a dash (-), or a long options specified
+as a string preceded by a double dash (--). If the option matches one of the known options,
+it will be processed as described below, depending on the declared ptype. If the option is not
+of type uc_Boolean, this will also consume the next command line parameter. If the option
+starts with a dash but does not match one of the specified options, it is taken as a bad
+argument and help text is printed out. If it does not start with a dash, the argument is taken 
+as one that the parser should not processed, and is returned as part of the "_remaining" key 
+as described below.</p>
+
+<p>If parsing of command line arguments is successful, a UniversalContainer of the map type is returned.
+Each entry in the option array results in one key, with the name derived from lng value of the option.
+If the option has not been specified on the command line, it will take on the value of the default string,
+as passed through the string_interpret function of UniversalContainer (so it will have a type 
+matching the ptype). If the def (for default) property is set to the string "__REQUIRED__" this
+option must always be present and specified on the command line. Omitting a required parameter
+results in the help text being printed.</p>
+
+<p>If the type of an option is uc_Integer, uc_Character, uc_String, uc_WString, or uc_Real, then the
+corresponding value in the returned map will be a UniversalContainer of that type. If the option
+is of type UC_Boolean the corresponding value will be the default value, or the inverse of the default 
+value if the option appeared on the command line.</p>
+
+<p>If the type is UC_FileInName, the string passed on the command line will be used as a filename.
+The corresponding file will be opened in read mode, and returned as the value for the option using
+the FileAdapater. The FileAdapter::cast can be used to  convert it into a FILE*, and the file
+will be closed when the containing UniversalContainer goes out of scope or is deleted. If the
+type is UC_FileOutName a file of the given name will be opened for output instead.</p>
+
+<p>For types UC_Buffer and UC_JSON the parameter is again treated as a filename, but this time the 
+file is actually read. In the case of UC_JSON the input is parsed and returned as a JSON object. 
+In the case of UC_Buffer, the contents are placed in a Buffer object, and returned using the 
+BufferAdapter class. It can be retrieved with the BufferAdapter::cast method, and it deleted 
+when the enclosing UniversalContainer is cleaned up.</p>
+
+<p>When <tt>parse_command_line</tt> returns, two additional keys are added to the returned map.
+The <tt>_remaining</tt> key contains an array of strings with any command line parameters the
+function did not understand. The <tt>_executable</tt> key contains a string with the name of
+the executable.</p>
+
+</div></body>
+</html>

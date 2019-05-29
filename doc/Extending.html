@@ -1,0 +1,166 @@
+<!doctype html>
+<!--
+  UniversalContainer library.
+  Copyright Jason Denton, 2012.
+  Made available under the new BSD license.
+ 
+  Send comments and bug reports to jason.denton@gmail.com
+  http://www.greatpanic.com/code.html
+-->
+<html>
+<head>
+<title>Extending UniversalContainer</title>
+<link media="screen" rel="stylesheet" type="text/css" href="proglib.css"/>
+</head>
+<body><div class="main">
+<h1>Extending UniversalContainer</h1>
+
+<h2>Overview</h2>
+<p>Consider the problem of enabling UniversalContainer to hold a new data type.
+Deriving a new child class has the advantage that the casting and assignment operators
+can be overridden to understand the new type. But in practice this proves tricky,
+since the new class must know when to handle the new type, and when to delegate back
+to the parent to handle previously understood types. And consider what happens when
+two children, possibly from different sources, add support for two new types,
+but the need is for one type that can contain everything of interest. Instead,
+UniversalContainer takes another approach, and allows for extensions to registered.
+By making the addition of new types orthogonal to the class itself, multiple types
+can be added independent of each other.</p>
+
+<p>UniversalContainer provides a special constructor which allows it to hold
+an arbitrary reference (a void*), with a designated type attached. Before
+this constructor is used, however, the new type must be registered by with
+an instance of a class called UniversalContainerTypeAdaptor. A second
+method, cast_or_throw, allows for that reference to be retrieved in a type safe
+way. To enable UniversalContainer to understand new types, you must first
+provide a new concrete implementation of UniversalContainerTypeAdapter.
+Second, register an instance of this class using the provide static
+registration function to get a new type id. Then, use this type id
+to add and retrieve values of the new type from a UniversalContainer.
+The registered UniversalContainerTypeAdapter will handle memory
+management, cloning, and string conversion for your type.</p>
+
+<p>In practice, there are a number of tricks that can be used
+to make using UniversalContainer with your newly supported type
+easier. It is highly recommended that you look at the code
+in the file example_adapter.cpp, and base your new adapter type
+off that code. You can also look at buffer_adapter.cpp for
+a complete example.</p>
+
+<h2>Using UniversalContainer With New Types</h2>
+<p>The downside of extending UniversalContainer in this manner
+is that the casting and assignment operators can not be
+overloaded to accept understand the new type. In practice,
+this can be dealt with by creating an overloaded assign and
+cast functions that do the work of casting and assigning values
+to a UniversalContainer. The example file gives an example
+of how to do this.</p>
+
+<h2>UniversalContainerTypeAdapter</h2>
+
+<p>UniversalContainerTypeAdapter is an abstract class
+  declared in ucontainer.h. Instances of this class
+  are responsible for adapting UniversalContainer to
+  understand new reference types. When UniversalContainer
+  is holding a reference to a type it does not understand
+  natively, it will invoked the registered adapter to
+  handle various tasks. The reference in question will
+  always be sent as the ptr parameter.
+</p>
+
+<h2 class="include">#include "ucontainer.h"</h2>
+<pre><div class="code_example">struct UniversalContainerTypeAdapter {
+    virtual std::string to_string(void* ptr);
+    virtual void* clone(void* ptr) = 0;
+    virtual void on_delete(void*) = 0;
+    virtual UniversalContainer pack(void* ptr);
+    virtual ~UniversalContainerTypeAdapter(void);
+  };
+</div></pre>
+
+<p>It is recommended that two additional methods be provided for each adapter.
+A method called "assign", which takes a reference of type handled by the adapter and
+returns a UniversalContainer which actually contains the reference. And cast, which
+takes a UniversalContainer and extracts and returns the reference it contains. The
+provided adapter sample code throws an exception via cast_or_throw if the container
+does not hold the appropriate type.</p>
+
+
+<div class="method_div">
+  <h3 class="method">virtual ~UniversalContainerTypeAdapter(void)</h3>
+  <p>Since most (virtually all) UniversalContainerTypeAdapters will
+  	not have state, the default empty implementation of this method
+  	should suffice. But if your implementation has state, this is the
+    place to clean up. Note that this method will only be invoked
+    when the program terminates.</p>
+ </div>
+
+<div class="method_div">
+  <h3 class="method">virtual std::string to_string(void* ptr)</h3>
+  <p>This is the method that will eventually be invoked when to_string
+  	is called on a UniversalContainer holding an adapted type. It should 
+  	return a string representing the data pointed to by ptr in string form.</p>
+ </div>
+
+ <div class="method_div">
+  <h3 class="method">virtual void* clone(void* ptr)</h3>
+  <p>This the method that is invoked when a container holding the adapted type
+  	is cloned. You should return a pointer to a new but identical copy of
+  	the data reference by ptr. The returned reference will be owned by the
+  	UniversalContainer that holds the clone.</p>
+ </div>
+
+ <div class="method_div">
+  <h3 class="method">virtual void on_delete(void* ptr)</h3>
+  <p>UniversalContainer does reference counting when passing or copying
+  	a container. When the last UniversalContainer holding a particular reference
+  	of the adapted type is deleted, this method will be invoked to cleanup the reference.
+  	This method should delete or free ptr as appropriate.</p>
+ </div>
+
+ <div class="method_div">
+  <h3 class="method">virtual UniversalContainer pack(void* ptr);</h3>
+  <p>This method is invoked when the adapted type needs to be represented as
+    a UniversalContainer that does make use of an adapter. The most common case 
+    scenario for invoking this method is when a UniversalContainer is serialized, 
+    and the serializer needs to reduce the held type to something it understands. If the
+    adapted type can not be serialized it may still be useful to return
+    a string type container to facilitate display and debugging. Otherwise,
+    it is appropriate to throw an exception, usually uce_Serialization_Error.</p>
+ </div>
+
+  <div class="method_div">
+ <h3 class="method">UniversalContainer assign(T* ptr);</h3>
+ <p>Not a part of the definition of UniversalTypeAdapter, but recommended in order to actually
+make a container useful. Takes a reference to an object of the adapted type, and
+returns a UniversalContainer that holds that reference. See the provided example code for the recommended
+trivial implementation.</p>
+ </div>
+
+<div class="method_div">
+<h3 class="method">T* cast(UniversalContainer&amp; uc);</h3>
+<p>Not a part of the definition of UniversalTypeAdapter, but recommended in order to actually
+make a container useful. Takes a UniversalContainer and extracts and returns a reference of the
+appropriate type. See the provided example code for the recommended trivial implementation.</p>
+</div>
+
+<h2>Provided Adapters</h2>
+
+<p>Two adapters are provided as part of the library.
+
+<h3>FileAdapter</h3>
+<p>FileAdapter implements a UniversalTypeAdapter for a FILE*. The implementation includes the 
+  suggested cast and assign methods. The clone method returns NULL if an attempt is made to clone
+  the file handle, and to_string returns the string "&lt;&lt; FILE* &gt;&gt;". The on_delete method
+  will close the file handle when invoked.<p>
+
+<h3>BufferAdapter</h3>
+<p>BufferAdapter implements a UniversalTypeAdapter for a Buffer*. The implementation includes the 
+  suggested cast and assign methods. The to_string methods returns a string giving the buffers
+  allocated size, length of data held, and the locations of the read and write markers. The
+  clone method will copy the buffer if it is marked as owning the data it holds, otherwise
+  it simply returns a new buffer that points to the same data but does not own it.
+
+
+</div></body>
+</html>
